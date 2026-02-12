@@ -1,38 +1,61 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import { db } from "./db";
+import { cves, type Cve, type InsertCve } from "@shared/schema";
+import { desc, eq, inArray } from "drizzle-orm";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getLatestCves(limit: number): Promise<Cve[]>;
+  upsertCves(items: InsertCve[]): Promise<{ inserted: number; updated: number }>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
+export class DatabaseStorage implements IStorage {
+  async getLatestCves(limit: number): Promise<Cve[]> {
+    return await db.select().from(cves).orderBy(desc(cves.publishedAt)).limit(limit);
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
-  }
+  async upsertCves(items: InsertCve[]): Promise<{ inserted: number; updated: number }> {
+    if (items.length === 0) return { inserted: 0, updated: 0 };
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
-  }
+    const ids = items.map((i) => i.cveId);
+    const existing = await db
+      .select({ cveId: cves.cveId })
+      .from(cves)
+      .where(inArray(cves.cveId, ids));
+    const existingSet = new Set(existing.map((e) => e.cveId));
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+    const inserted = items.filter((i) => !existingSet.has(i.cveId)).length;
+    const updated = items.length - inserted;
+
+    await db
+      .insert(cves)
+      .values(items)
+      .onConflictDoUpdate({
+        target: cves.cveId,
+        set: {
+          cvssScoreX10: cves.cvssScoreX10,
+          severity: cves.severity,
+          publishedAt: cves.publishedAt,
+          description: cves.description,
+          metrics: cves.metrics,
+        },
+      });
+
+    // drizzle onConflictDoUpdate set can't reference excluded directly here; use a second pass update.
+    // To keep it simple and correct, update each record with incoming values.
+    for (const item of items) {
+      await db
+        .update(cves)
+        .set({
+          cvssScoreX10: item.cvssScoreX10,
+          severity: item.severity,
+          publishedAt: item.publishedAt,
+          description: item.description,
+          metrics: item.metrics,
+        })
+        .where(eq(cves.cveId, item.cveId));
+    }
+
+    return { inserted, updated };
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();

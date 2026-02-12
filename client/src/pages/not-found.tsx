@@ -1,21 +1,32 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle } from "lucide-react";
+import { Link } from "wouter";
+import { AppShell } from "@/components/AppShell";
+import { Button } from "@/components/ui/button";
+import { AlertTriangle } from "lucide-react";
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md mx-4">
-        <CardContent className="pt-6">
-          <div className="flex mb-4 gap-2">
-            <AlertCircle className="h-8 w-8 text-red-500" />
-            <h1 className="text-2xl font-bold text-gray-900">404 Page Not Found</h1>
-          </div>
-
-          <p className="mt-4 text-sm text-gray-600">
-            Did you forget to add the page to the router?
-          </p>
-        </CardContent>
-      </Card>
-    </div>
+    <AppShell>
+      <div className="glass rounded-3xl border border-border/70 shadow-soft p-8 sm:p-10 text-center">
+        <div className="mx-auto grid place-items-center h-14 w-14 rounded-2xl bg-destructive/10 border border-destructive/25">
+          <AlertTriangle className="h-6 w-6 text-destructive" />
+        </div>
+        <h1 className="mt-4 text-3xl sm:text-4xl font-bold tracking-tight">Page not found</h1>
+        <p className="mt-2 text-sm text-muted-foreground max-w-xl mx-auto">
+          The route you requested doesn’t exist. Use the navigation rail to get back on track.
+        </p>
+        <div className="mt-6 flex justify-center gap-2">
+          <Link
+            href="/"
+            data-testid="notfound-home"
+            className="inline-flex"
+          >
+            <Button className="rounded-2xl">Go to overview</Button>
+          </Link>
+          <Link href="/threat-feed" data-testid="notfound-feed" className="inline-flex">
+            <Button variant="secondary" className="rounded-2xl">Threat feed</Button>
+          </Link>
+        </div>
+      </div>
+    </AppShell>
   );
 }
