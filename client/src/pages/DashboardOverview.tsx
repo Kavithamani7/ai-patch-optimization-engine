@@ -34,7 +34,7 @@ export default function DashboardOverview() {
         <SectionHeader
           data-testid="overview-header"
           eyebrow="Operations"
-          title="Cyber Patch Intelligence"
+          title="AI Patch Optimization Engine"
           description={
             <span>
               A premium incident-response dashboard: NVD threat feed, model comparison, explainability, optimization, and
